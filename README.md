@@ -64,15 +64,23 @@ The raw data consists of 9 tables (~1.1M records) loaded into BigQuery under the
 
 ### Prerequisites
 - [Anaconda](https://www.anaconda.com/download) or Miniconda installed
+- A GitHub collaborator invite accepted from Marcus — required to push changes to the repo
 - The service account JSON key file — ask the project owner (Marcus) to share it with you securely
 - A Google account added to the GCP project by Marcus — required to view data and run queries in the BigQuery console (see below)
 
 ---
 
-### For the project owner only — adding members to GCP
+### For the project owner only — adding members to GitHub and GCP
 
-> Skip this section if you are not the project owner. Send your Google account email to Marcus.
+> Skip this section if you are not the project owner. Send your GitHub username and Google account email to Marcus.
 
+**GitHub — add as collaborator:**
+1. Go to the GitHub repo → **Settings → Collaborators**
+2. Click **Add people**
+3. Enter the group member's GitHub username
+4. They will receive an email invite — they must accept it before they can push
+
+**GCP — grant BigQuery access:**
 1. Go to [GCP Console](https://console.cloud.google.com) and select the `olist-498903` project
 2. Navigate to **IAM & Admin → IAM**
 3. Click **Grant Access**
@@ -80,11 +88,14 @@ The raw data consists of 9 tables (~1.1M records) loaded into BigQuery under the
 5. Assign the role: **BigQuery User**
 6. Click **Save**
 
-Once added, the group member can log into [console.cloud.google.com](https://console.cloud.google.com), navigate to BigQuery, and browse and query all datasets.
+Once added to GCP, the group member can log into [console.cloud.google.com](https://console.cloud.google.com), navigate to BigQuery, and browse and query all datasets.
 
 ---
 
 ### Step 1 — Clone the repo
+
+> Accept the GitHub collaborator invite from Marcus before cloning, otherwise you will not be able to push changes.
+
 ```bash
 git clone <repo-url>
 cd ELT_olist
