@@ -527,15 +527,32 @@ function initGeo(){
       const t=hi===lo?.5:(raw-lo)/(hi-lo);
       const col=lerp(cfg.grad[0],cfg.grad[1],t);
       const r=9+(s.customers/maxC)*22;
+      const hBg=cfg.grad[0],hAc=cfg.grad[1];
+      // row builders — highlighted version for the active metric
+      const puRow=(isA,lbl,val)=>isA
+        ?'<div class="pu-row" style="background:'+hBg+';border-radius:6px;margin:0 -8px;padding:6px 8px;border-left:3px solid '+hAc+'"><span class="pu-lbl" style="color:'+hAc+';font-weight:600">'+lbl+'</span><span class="pu-val" style="color:'+hAc+'">'+val+'</span></div>'
+        :'<div class="pu-row"><span class="pu-lbl">'+lbl+'</span><span class="pu-val">'+val+'</span></div>';
+      const sdRow=(isA,lbl,val)=>isA
+        ?'<div class="sd-row" style="background:'+hBg+';border-radius:6px;margin:0 -8px;padding:8px;border-left:3px solid '+hAc+'"><span class="sd-lbl" style="color:'+hAc+';font-weight:600">'+lbl+'</span><span class="sd-val" style="color:'+hAc+';font-size:15px">'+val+'</span></div>'
+        :'<div class="sd-row"><span class="sd-lbl">'+lbl+'</span><span class="sd-val">'+val+'</span></div>';
+      const heroVal=mode==='avg_freight'?(s.avg_freight!=null?'R$'+s.avg_freight:'—')
+        :mode==='avg_delivery_days'?(s.avg_delivery_days!=null?s.avg_delivery_days+'d':'—')
+        :mode==='avg_health_score'?(s.avg_health_score!=null?s.avg_health_score+'/100':'—')
+        :mode==='churn_rate_pct'?(s.churn_rate_pct!=null?s.churn_rate_pct+'%':'—')
+        :(s.customer_per_seller!=null?s.customer_per_seller+'x':'—');
       const pop='<div class="pu-hdr" style="background:'+col+'">'+s.name+' <span style="opacity:.8;font-size:11px">('+s.state+')</span></div>'+
+        '<div style="padding:10px 16px 8px;border-bottom:1px solid #F2F4F7">'+
+        '<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#667085;margin-bottom:3px">'+cfg.label+'</div>'+
+        '<div style="font-size:22px;font-weight:800;color:'+hAc+'">'+heroVal+'</div>'+
+        '</div>'+
         '<div class="pu-body">'+
-        '<div class="pu-row"><span class="pu-lbl">Customers</span><span class="pu-val">'+s.customers.toLocaleString()+'</span></div>'+
-        '<div class="pu-row"><span class="pu-lbl">Sellers</span><span class="pu-val">'+s.sellers.toLocaleString()+'</span></div>'+
-        '<div class="pu-row"><span class="pu-lbl">Cust / Seller</span><span class="pu-val">'+(s.customer_per_seller!=null?s.customer_per_seller+'x':'—')+'</span></div>'+
-        '<div class="pu-row"><span class="pu-lbl">Avg Delivery</span><span class="pu-val">'+(s.avg_delivery_days!=null?s.avg_delivery_days+'d':'—')+'</span></div>'+
-        '<div class="pu-row"><span class="pu-lbl">Avg Freight</span><span class="pu-val">'+(s.avg_freight!=null?'R$'+s.avg_freight:'—')+'</span></div>'+
-        '<div class="pu-row"><span class="pu-lbl">Seller Health</span><span class="pu-val">'+(s.avg_health_score!=null?s.avg_health_score+'/100':'—')+'</span></div>'+
-        '<div class="pu-row"><span class="pu-lbl">Churn Rate</span><span class="pu-val">'+(s.churn_rate_pct!=null?s.churn_rate_pct+'%':'—')+'</span></div>'+
+        puRow(false,'Customers',s.customers.toLocaleString())+
+        puRow(false,'Sellers',s.sellers.toLocaleString())+
+        puRow(mode==='customer_per_seller','Cust / Seller',(s.customer_per_seller!=null?s.customer_per_seller+'x':'—'))+
+        puRow(mode==='avg_delivery_days','Avg Delivery',(s.avg_delivery_days!=null?s.avg_delivery_days+'d':'—'))+
+        puRow(mode==='avg_freight','Avg Freight',(s.avg_freight!=null?'R$'+s.avg_freight:'—'))+
+        puRow(mode==='avg_health_score','Seller Health',(s.avg_health_score!=null?s.avg_health_score+'/100':'—'))+
+        puRow(mode==='churn_rate_pct','Churn Rate',(s.churn_rate_pct!=null?s.churn_rate_pct+'%':'—'))+
         '</div>';
       const m=L.circleMarker([s.lat,s.lng],{radius:r,fillColor:col,color:'#fff',weight:1.5,fillOpacity:.88})
         .bindPopup(pop,{maxWidth:260});
@@ -546,12 +563,12 @@ function initGeo(){
         applyFilters();
         document.getElementById('state-detail').innerHTML=F.state?
           '<div class="sd-name">'+s.name+'</div><div class="sd-sub">'+s.state+' &middot; '+s.customers.toLocaleString()+' customers</div>'+
-          ['Sellers|'+s.sellers.toLocaleString(),'Cust/Seller|'+(s.customer_per_seller!=null?s.customer_per_seller+'x':'—'),
-           'Avg Delivery|'+(s.avg_delivery_days!=null?s.avg_delivery_days+'d':'—'),
-           'Avg Freight|'+(s.avg_freight!=null?'R$'+s.avg_freight:'—'),
-           'Seller Health|'+(s.avg_health_score!=null?s.avg_health_score+'/100':'—'),
-           'Churn Rate|'+(s.churn_rate_pct!=null?s.churn_rate_pct+'%':'—')
-          ].map(r=>{const[l,v]=r.split('|');return'<div class="sd-row"><span class="sd-lbl">'+l+'</span><span class="sd-val">'+v+'</span></div>'}).join(''):
+          sdRow(false,'Sellers',s.sellers.toLocaleString())+
+          sdRow(mode==='customer_per_seller','Cust/Seller',(s.customer_per_seller!=null?s.customer_per_seller+'x':'—'))+
+          sdRow(mode==='avg_delivery_days','Avg Delivery',(s.avg_delivery_days!=null?s.avg_delivery_days+'d':'—'))+
+          sdRow(mode==='avg_freight','Avg Freight',(s.avg_freight!=null?'R$'+s.avg_freight:'—'))+
+          sdRow(mode==='avg_health_score','Seller Health',(s.avg_health_score!=null?s.avg_health_score+'/100':'—'))+
+          sdRow(mode==='churn_rate_pct','Churn Rate',(s.churn_rate_pct!=null?s.churn_rate_pct+'%':'—')):
           '<div class="sd-empty">&#128205; Click a state marker<br>on the map to see<br>regional details here</div>';
       });
       m.addTo(map);
