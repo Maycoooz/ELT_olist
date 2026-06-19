@@ -22,10 +22,11 @@ plugins:
     pip_url: git+https://github.com/z3z1ma/target-bigquery.git setuptools<80
     config:
       batch_size: 104857600
-      credentials_path: /Users/mudkip/Desktop/olist-498903-e7f8763e517a.json
+      credentials_path: /home/wanjz/ELT_olist/olist_meltano/olist-498903-e7f8763e517a.json
       dataset: olist_raw
       denormalized: true
       flattening_enabled: true
       flattening_max_depth: 1
       method: batch_job
+      overwrite: true
       project: olist-498903
