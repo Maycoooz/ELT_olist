@@ -503,6 +503,7 @@ const MODES = {
 
 // ── Cross-filter state ────────────────────────────────────────
 let histCh,tierCh,trendCh,_histState=undefined;
+let rfmCh,cohCh,campCh,catCh;
 const F = { state:null, tier:null, trend:null, scoreMin:null, scoreMax:null, intFilter:'intervention', trendBtn:'all', custSeg:'at_risk' };
 let gridApi = null;
 let customerGridApi = null;
@@ -747,7 +748,7 @@ function initGeo(){
 
 // ── Customers ─────────────────────────────────────────────────
 function initCustomers(){
-  const rfmCh=ec('chart-rfm');
+  rfmCh=ec('chart-rfm');
   const rfmData=[...D.rfm].sort((a,b)=>a.customers-b.customers);
   rfmCh.setOption({
     tooltip:{trigger:'axis',axisPointer:{type:'none'},
@@ -768,7 +769,7 @@ function initCustomers(){
   });
   window.addEventListener('resize',()=>rfmCh.resize());
 
-  const cohCh=ec('chart-cohort');
+  cohCh=ec('chart-cohort');
   const flat=[];
   D.cohort.y.forEach((y,yi)=>D.cohort.x.forEach((x,xi)=>{const v=D.cohort.z[yi]?.[xi];if(v!=null)flat.push([xi,yi,v])}));
   cohCh.setOption({
@@ -783,7 +784,7 @@ function initCustomers(){
   });
   window.addEventListener('resize',()=>cohCh.resize());
 
-  const campCh=ec('chart-campaign');
+  campCh=ec('chart-campaign');
   const campData=[...D.campaigns].reverse();
   campCh.setOption({
     tooltip:{trigger:'axis',axisPointer:{type:'none'},
@@ -800,7 +801,7 @@ function initCustomers(){
   });
   window.addEventListener('resize',()=>campCh.resize());
 
-  const catCh=ec('chart-cats');
+  catCh=ec('chart-cats');
   const rates=D.cats.map(c=>c.return_rate_pct);
   const catAvg=rates.reduce((a,b)=>a+b,0)/rates.length;
   const catRev=[...D.cats].reverse();
@@ -1048,6 +1049,53 @@ function applyFilters(){
       tierCh.setOption({series:[{data:tierOrder.map(t=>({name:t.replace('_',' '),value:tC[t]||0,itemStyle:{color:TIER_CLR[t]}}))}]});
       trendCh.setOption({series:[{data:trendOrder.map(t=>({name:t,value:trC[t]||0,itemStyle:{color:TREND_CLR[t]}}))}]});
     }
+    // Refresh customer charts
+    const _geoS = F.state ? D.geo.find(g=>g.state===F.state) : null;
+    if(rfmCh){
+      let _rfmRows;
+      if(F.state && _geoS){
+        const _rfm=_geoS.rfm||{};
+        _rfmRows=SEG_ORDER.filter(s=>_rfm[s]).map(s=>({segment:s,customers:_rfm[s]}));
+      } else {
+        _rfmRows=D.rfm;
+      }
+      const _rfmSorted=[..._rfmRows].sort((a,b)=>a.customers-b.customers);
+      rfmCh.setOption({
+        yAxis:{data:_rfmSorted.map(r=>r.segment.replace(/_/g,' '))},
+        series:[{data:_rfmSorted.map(r=>({value:r.customers,itemStyle:{color:SEG_CLR[r.segment]||'#94A3B8',borderRadius:[0,4,4,0]}}))}]
+      });
+    }
+    if(campCh){
+      let _campRows;
+      if(F.state && D.customers){
+        const _sc3=D.customers.filter(c=>c.state===F.state&&c.campaign);
+        const _cm={};
+        _sc3.forEach(c=>{if(!_cm[c.campaign])_cm[c.campaign]={type:c.campaign,customers:0,spend:0};_cm[c.campaign].customers++;_cm[c.campaign].spend+=c.monetary;});
+        _campRows=Object.values(_cm).map(c=>({type:c.type,customers:c.customers,avg_spend:c.spend/c.customers})).sort((a,b)=>b.customers-a.customers);
+      } else {
+        _campRows=D.campaigns;
+      }
+      const _campRev=[..._campRows].reverse();
+      campCh.setOption({
+        yAxis:{data:_campRev.map(c=>c.type.replace(/_/g,' '))},
+        series:[{data:_campRev.map(c=>({value:c.customers,itemStyle:{color:CAMP_CLR[c.type]||'#94A3B8',borderRadius:[0,4,4,0]}}))}]
+      });
+    }
+    // Cohort & category charts have no per-state data — update card titles only
+    ['chart-cohort','chart-cats'].forEach(id=>{
+      const _card=document.getElementById(id)?.closest('.card')?.querySelector('.card-title');
+      if(_card){
+        const _base=id==='chart-cohort'
+          ?'Cohort Retention — % of customers still active at month N'
+          :'Repeat Purchase Rate by First-Order Category';
+        _card.textContent=F.state?_base+' (national view)':_base;
+      }
+    });
+    // Update customer section subtitle
+    const _csub=document.querySelector('#s-customers .sec-sub');
+    if(_csub) _csub.textContent=F.state
+      ?'Filtered to '+F.state+' — cohort & category charts show national data'
+      :'RFM segments, cohort retention, campaign targeting, and acquisition quality';
     // Update seller KPI cards
     const _kpiSellers = _ss || D.sellers;
     const _kpiAvg = _kpiSellers.length ? _kpiSellers.reduce((a,s)=>a+s.health_score,0)/_kpiSellers.length : 0;
