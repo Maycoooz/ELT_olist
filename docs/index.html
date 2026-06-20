@@ -502,6 +502,7 @@ const MODES = {
 };
 
 // ── Cross-filter state ────────────────────────────────────────
+let histCh,tierCh,trendCh,_histState=undefined;
 const F = { state:null, tier:null, trend:null, scoreMin:null, scoreMax:null, intFilter:'intervention', trendBtn:'all', custSeg:'at_risk' };
 let gridApi = null;
 let customerGridApi = null;
@@ -898,7 +899,7 @@ function initSellers(){
   scores.forEach(s=>{bins[Math.min(Math.floor(s/BW),NB-1)]++});
   const binLbls=Array.from({length:NB},(_,i)=>i*BW+'-'+(i+1)*BW);
   const binClrs=Array.from({length:NB},(_,i)=>{const c=i*BW+BW/2;return c<40?'#EF4444':c<60?'#F97316':c<80?'#F59E0B':'#10B981'});
-  const histCh=ec('chart-hist');
+  histCh=ec('chart-hist');
   histCh.setOption({
     tooltip:{trigger:'axis',formatter:ps=>'Score '+ps[0].name+'<br><b>'+ps[0].value+' sellers</b>'},
     brush:{toolbox:['rect','clear'],xAxisIndex:0,brushStyle:{borderWidth:1,color:'rgba(29,78,216,.08)',borderColor:'#1D4ED8'}},
@@ -928,7 +929,7 @@ function initSellers(){
   const trendOrder=['stable','declining','inactive'];
   const tierC={}, trendC={};
   D.health_summary.forEach(r=>{tierC[r.tier]=(tierC[r.tier]||0)+r.sellers;trendC[r.trend]=(trendC[r.trend]||0)+r.sellers});
-  const tierCh=ec('chart-tier');
+  tierCh=ec('chart-tier');
   tierCh.setOption({
     tooltip:{trigger:'item',formatter:p=>'<b>'+p.name+'</b><br>'+p.value.toLocaleString()+' sellers ('+p.percent+'%)'},
     legend:{orient:'vertical',right:4,top:'middle',textStyle:{fontSize:10,color:'#64748B'},itemWidth:10,itemHeight:10},
@@ -943,7 +944,7 @@ function initSellers(){
   });
   window.addEventListener('resize',()=>tierCh.resize());
 
-  const trendCh=ec('chart-trend');
+  trendCh=ec('chart-trend');
   trendCh.setOption({
     tooltip:{trigger:'item',formatter:p=>'<b>'+p.name+'</b><br>'+p.value.toLocaleString()+' sellers ('+p.percent+'%)'},
     legend:{orient:'vertical',right:4,top:'middle',textStyle:{fontSize:10,color:'#64748B'},itemWidth:10,itemHeight:10},
@@ -1013,11 +1014,41 @@ function initSellers(){
       applyFilters();
     });
   });
+  applyFilters(); // populate both grids on initial load
 }
 
 // ── Filter logic ──────────────────────────────────────────────
 function applyFilters(){
   if(!gridApi) return;
+  // Refresh charts when selected state changes
+  if(F.state !== _histState){
+    _histState = F.state;
+    F.scoreMin = null; F.scoreMax = null;
+    const _ss = F.state ? D.sellers.filter(s=>s.state===F.state) : null;
+    const _sc = _ss ? _ss.map(s=>s.health_score) : D.health_scores;
+    if(histCh){
+      const BW=5,NB=20,bins=new Array(NB).fill(0);
+      _sc.forEach(s=>{bins[Math.min(Math.floor(s/BW),NB-1)]++});
+      const bC=Array.from({length:NB},(_,i)=>{const c=i*BW+BW/2;return c<40?'#EF4444':c<60?'#F97316':c<80?'#F59E0B':'#10B981'});
+      histCh.setOption({series:[{data:bins.map((v,i)=>({value:v,itemStyle:{color:bC[i],borderRadius:[3,3,0,0]}}))}]});
+      const _el=document.querySelector('#chart-hist')?.closest('.card')?.querySelector('.card-title');
+      if(_el) _el.textContent=F.state
+        ?'Health Score Distribution — '+F.state+' ('+_sc.length+' sellers)'
+        :'Health Score Distribution — drag to select a score range and filter the table below';
+    }
+    if(tierCh&&trendCh){
+      const tierOrder=['excellent','good','at_risk','critical'];
+      const trendOrder=['stable','declining','inactive'];
+      const tC={},trC={};
+      if(_ss){
+        _ss.forEach(s=>{const t=s.health_tier,tr=s.trend_status;if(t)tC[t]=(tC[t]||0)+1;if(tr)trC[tr]=(trC[tr]||0)+1;});
+      } else {
+        D.health_summary.forEach(r=>{tC[r.tier]=(tC[r.tier]||0)+r.sellers;trC[r.trend]=(trC[r.trend]||0)+r.sellers;});
+      }
+      tierCh.setOption({series:[{data:tierOrder.map(t=>({name:t.replace('_',' '),value:tC[t]||0,itemStyle:{color:TIER_CLR[t]}}))}]});
+      trendCh.setOption({series:[{data:trendOrder.map(t=>({name:t,value:trC[t]||0,itemStyle:{color:TREND_CLR[t]}}))}]});
+    }
+  }
   let rows;
   if(F.state && F.intFilter==='all'){
     rows=D.sellers.filter(r=>r.state===F.state);
@@ -1105,7 +1136,6 @@ initGeo();
 initCustomers();
 initSellers();
 initScrollSpy();
-document.getElementById('grid-count').textContent=D.sellers.filter(s=>s.reason).length+' sellers';
 </script>
 </body>
 </html>
